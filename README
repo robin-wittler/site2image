@@ -1,0 +1,5 @@
+The Proxy Credential File must have the following format:
+
+[proxy_auth]
+username = foo
+password = bar

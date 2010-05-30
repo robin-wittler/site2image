@@ -13,10 +13,6 @@ import signal
 import webkit
 import locale
 import datetime
-from md5 import md5
-from time import sleep
-from random import randint
-from threading import Event
 from optparse import OptionParser
 from ConfigParser import SafeConfigParser
 
@@ -63,7 +59,6 @@ class BrowserWindow(gtk.Window):
         self.add(self.browser)
         self.show_all()
         signal.signal(signal.SIGALRM, self.loadTimeout)
-        self.next_url_event = Event()
         self.urls = list()
         self.last_url = str()
         self.connect('delete_event', self.deleteEvent)
