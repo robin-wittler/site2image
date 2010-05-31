@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __licence__ = 'BSD'
 
 import os
