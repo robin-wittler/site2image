@@ -36,7 +36,8 @@ class BrowserWindow(gtk.Window):
             time_format='%Y%m%d-%H%M%S.%s',
             dirname='/tmp',
             file_prefix='site2image',
-            debug=False
+            debug=False,
+            honor_robots_txt=True
     ):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_decorated(False)
@@ -61,6 +62,7 @@ class BrowserWindow(gtk.Window):
         self.dirname = dirname
         self.file_prefix = file_prefix
         self.debug = debug
+        self.honor_robots_txt = honor_robots_txt
         self.add(self.browser)
         self.show_all()
         signal.signal(signal.SIGALRM, self.loadTimeout)
@@ -111,23 +113,24 @@ class BrowserWindow(gtk.Window):
         self.urls.extend(urls)
 
     def load(self, url):
-        match = CRE_TOPLEVEL_WWW_DIR.match(url)
-        if match:
-            robots_url = match.groups()[0] + '/robots.txt'
-        else:
-            if self.debug:
-                sys.stdout.write('%s is not a valid url. Trying next url.\n' %(url))
-            self.run()
-        self.robots_parser.set_url(robots_url)
-        self.robots_parser.read()
-        useragent = self.settings.get_property('user-agent')
-        if not self.robots_parser.can_fetch(useragent, url):
-            if self.debug:
-                sys.stdout.write(
-                        'Getting url: %s is not allowed for useragent: %s.' +
-                        'Trying next url.\n' %(url, useragent)
-                )
-                self.run()
+        if self.honor_robots_txt:
+            match = CRE_TOPLEVEL_WWW_DIR.match(url)
+            if match:
+                robots_url = match.groups()[0] + '/robots.txt'
+            else:
+                if self.debug:
+                    sys.stdout.write('%s is not a valid url. Trying next url.\n' %(url))
+                    self.run()
+            self.robots_parser.set_url(robots_url)
+            self.robots_parser.read()
+            useragent = self.settings.get_property('user-agent')
+            if not self.robots_parser.can_fetch(useragent, url):
+                if self.debug:
+                    sys.stdout.write(
+                            'Getting url: %s is not allowed for useragent: %s.' +
+                            'Trying next url.\n' %(url, useragent)
+                    )
+                    self.run()
         self.load_finished_event = self.browser.connect(
                 'load-finished',
                 self.printWebsite
@@ -293,6 +296,16 @@ if __name__ == '__main__':
             default=False,
             help='Set this to see some messages. [Default: %default]'
     )
+    parser.add_option(
+            '--no-honor-robots-txt',
+            dest='honor_robots_txt',
+            action='store_false',
+            default=True,
+            help=(
+                'Set this to deactive honoring sites robots.txt. ' +
+                '[Default: honor robots.txt]'
+            )
+    )
     (options, args) = parser.parse_args()
     if not args:
         sys.stderr.write(
@@ -369,7 +382,8 @@ if __name__ == '__main__':
             time_format=options.time_format,
             dirname=options.dirname,
             file_prefix=options.file_prefix,
-            debug=options.debug
+            debug=options.debug,
+            honor_robots_txt=options.honor_robots_txt
     )
     browser.addUrls(*urls)
     browser.run()
