@@ -5,6 +5,7 @@ __version__ = '0.0.1'
 __licence__ = 'BSD'
 
 import os
+import re
 import sys
 import pygtk
 pygtk.require('2.0')
@@ -14,8 +15,12 @@ import webkit
 import locale
 import datetime
 from optparse import OptionParser
+from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
 
+
+RE_TOPLEVEL_WWW_DIR = '^(http://.*?)/(?:.*)$'
+CRE_TOPLEVEL_WWW_DIR = re.compile(RE_TOPLEVEL_WWW_DIR)
 
 class BrowserWindow(gtk.Window):
     def __init__(
@@ -61,6 +66,7 @@ class BrowserWindow(gtk.Window):
         signal.signal(signal.SIGALRM, self.loadTimeout)
         self.urls = list()
         self.last_url = str()
+        self.robots_parser = RobotFileParser
         self.connect('delete_event', self.deleteEvent)
         self.connect('destroy', self.destroyEvent)
 
@@ -105,6 +111,23 @@ class BrowserWindow(gtk.Window):
         self.urls.extend(urls)
 
     def load(self, url):
+        match = CRE_TOPLEVEL_WWW_DIR.match(url)
+        if match:
+            robots_url = match.groups()[0] + '/robots.txt'
+        else:
+            if self.debug:
+                sys.stdout.write('%s is not a valid url. Trying next url.\n' %(url))
+            self.run()
+        self.robots_parser.set_url(robots_url)
+        self.robots_parser.read()
+        useragent = self.settings.get_property('user-agent')
+        if not self.robots_parser.can_fetch(useragent, url):
+            if self.debug:
+                sys.stdout.write(
+                        'Getting url: %s is not allowed for useragent: %s.' +
+                        'Trying next url.\n' %(url, useragent)
+                )
+                self.run()
         self.load_finished_event = self.browser.connect(
                 'load-finished',
                 self.printWebsite
