@@ -181,7 +181,7 @@ if __name__ == '__main__':
             '[--set-useragent AGENT] [--enable-file-access-from-file-uris] ' +
             '[--timeout TIMEOUT] [--time-format FORMAT] [--dir DIR] ' +
             '[--file-prefix PREFIX] [--http-proxy|--https-proxy ADDR] ' +
-            '[--proxy-credentials PATH] [--debug] URLs'
+            '[--proxy-credentials PATH] [--debug] [--no-honor-robots-txt] URLs'
     ) %(prog)
     parser = OptionParser(usage=usage, version='%s %s' %(prog, __version__))
     parser.add_option(
