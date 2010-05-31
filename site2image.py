@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __licence__ = 'BSD'
 
 import os
@@ -305,7 +305,7 @@ if __name__ == '__main__':
             action='store_false',
             default=True,
             help=(
-                'Set this to deactive honoring sites robots.txt. ' +
+                'Set this to deactivate honoring sites robots.txt. ' +
                 '[Default: honor robots.txt]'
             )
     )
