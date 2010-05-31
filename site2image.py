@@ -14,13 +14,16 @@ import signal
 import webkit
 import locale
 import datetime
+from random import randint
 from optparse import OptionParser
 from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
 
 
-RE_TOPLEVEL_WWW_DIR = '^(http://.*?)/(?:.*)$'
+RE_TOPLEVEL_WWW_DIR = '^((http|https)://[^/]+)'
 CRE_TOPLEVEL_WWW_DIR = re.compile(RE_TOPLEVEL_WWW_DIR)
+RE_SHORT_URL = '^(?:http://|https://)([^/]+)'
+CRE_SHORT_URL = re.compile(RE_SHORT_URL)
 
 class BrowserWindow(gtk.Window):
     def __init__(
@@ -68,20 +71,22 @@ class BrowserWindow(gtk.Window):
         signal.signal(signal.SIGALRM, self.loadTimeout)
         self.urls = list()
         self.last_url = str()
-        self.robots_parser = RobotFileParser
+        self.robots_parser = RobotFileParser()
         self.connect('delete_event', self.deleteEvent)
         self.connect('destroy', self.destroyEvent)
 
     def printWebsite(self, webview, frame):
+        self.browser.disconnect(self.load_finished_event)
+        self.browser.disconnect(self.load_started_event)
         signal.alarm(0)
         snapshot = self.browser.get_snapshot()
+        snapshot_size = snapshot.get_size()
         pixbuffer = gtk.gdk.Pixbuf(
                 gtk.gdk.COLORSPACE_RGB,
                 False,
                 8,
-                *snapshot.get_size()
+                *snapshot_size
         )
-        root_window = gtk.gdk.get_default_root_window()
         pixbuffer = pixbuffer.get_from_drawable(
                 snapshot,
                 snapshot.get_colormap(),
@@ -89,7 +94,7 @@ class BrowserWindow(gtk.Window):
                 0,
                 0,
                 0,
-                *snapshot.get_size()
+                *snapshot_size
         )
         if pixbuffer != None:
             path = os.path.join(
@@ -104,8 +109,6 @@ class BrowserWindow(gtk.Window):
                         'save image of url %s to %s\n' %(self.last_url, path)
                 )
             pixbuffer.save(path, 'png')
-        self.browser.disconnect(self.load_finished_event)
-        self.browser.disconnect(self.load_started_event)
         self.browser.open('about:')
         self.run()
 
@@ -117,12 +120,12 @@ class BrowserWindow(gtk.Window):
             match = CRE_TOPLEVEL_WWW_DIR.match(url)
             if match:
                 robots_url = match.groups()[0] + '/robots.txt'
+                self.robots_parser.set_url(robots_url)
+                self.robots_parser.read()
             else:
                 if self.debug:
                     sys.stdout.write('%s is not a valid url. Trying next url.\n' %(url))
                     self.run()
-            self.robots_parser.set_url(robots_url)
-            self.robots_parser.read()
             useragent = self.settings.get_property('user-agent')
             if not self.robots_parser.can_fetch(useragent, url):
                 if self.debug:
@@ -139,6 +142,8 @@ class BrowserWindow(gtk.Window):
                 'load-started',
                 self.loadStarted
         )
+        if self.debug:
+            sys.stdout.write('loading url: %s\n' %(url))
         self.browser.open(url)
 
     def loadStarted(self, webview, frame):
@@ -162,8 +167,6 @@ class BrowserWindow(gtk.Window):
     def run(self):
         if self.urls:
             url = self.urls.pop(0)
-            if self.debug:
-                sys.stdout.write('loading url: %s\n' %(url))
             self.last_url = url
             self.load(url)
         else:
