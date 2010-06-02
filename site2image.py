@@ -14,6 +14,8 @@ import signal
 import webkit
 import locale
 import datetime
+import logging
+import logging.handlers
 from random import randint
 from optparse import OptionParser
 from robotparser import RobotFileParser
@@ -24,6 +26,18 @@ RE_TOPLEVEL_WWW_DIR = '^((http|https)://[^/]+)'
 CRE_TOPLEVEL_WWW_DIR = re.compile(RE_TOPLEVEL_WWW_DIR)
 RE_SHORT_URL = '^(?:http://|https://)([^/]+)'
 CRE_SHORT_URL = re.compile(RE_SHORT_URL)
+
+
+logger = logging.getLogger(sys.argv[0])
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+        '%(asctime)s %(name)s[%(process)d] ' +
+        '%(levelname)s: %(message)s'
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 class BrowserWindow(gtk.Window):
     def __init__(
@@ -39,8 +53,9 @@ class BrowserWindow(gtk.Window):
             time_format='%Y%m%d-%H%M%S.%s',
             dirname='/tmp',
             file_prefix='site2image',
-            debug=False,
-            honor_robots_txt=True
+            debug='NOTSET',
+            honor_robots_txt=True,
+            logger=None
     ):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_decorated(False)
@@ -64,7 +79,6 @@ class BrowserWindow(gtk.Window):
         self.time_format = time_format
         self.dirname = dirname
         self.file_prefix = file_prefix
-        self.debug = debug
         self.honor_robots_txt = honor_robots_txt
         self.add(self.browser)
         self.show_all()
@@ -75,10 +89,20 @@ class BrowserWindow(gtk.Window):
         self.connect('delete_event', self.deleteEvent)
         self.connect('destroy', self.destroyEvent)
 
-    def printWebsite(self, webview, frame):
+    def loadFinished(self, webview, frame):
+        logger.info(
+                'Finished loading url: %s'
+                %(self.last_url)
+        )
+        self.printWebsite()
+
+    def printWebsite(self):
+        # maybe called by timeout so we have to disconnect the events
+        # to prevent double calling.
         self.browser.disconnect(self.load_finished_event)
         self.browser.disconnect(self.load_started_event)
         signal.alarm(0)
+
         snapshot = self.browser.get_snapshot()
         snapshot_size = snapshot.get_size()
         pixbuffer = gtk.gdk.Pixbuf(
@@ -106,64 +130,90 @@ class BrowserWindow(gtk.Window):
                         '-' + str(randint(100000, 999999)) +
                         '.png'
             )
-            if self.debug:
-                sys.stdout.write(
-                        'save image of url %s to %s\n' %(self.last_url, path)
-                )
+            logger.info('save image of url %s to %s' %(self.last_url, path))
             pixbuffer.save(path, 'png')
+            logger.debug('image successfully saved to %s' %(path))
+        else:
+            logger.critical(
+                    'could not take snapshot for url %s'
+                    %(self.last_url)
+            )
+        # calling browser.stop_loading ends up with
+        # sending a SIGINT - so this is awefully not what
+        # we want. To prevent missleading behavior we
+        # load a empty page.
         self.browser.open('about:')
         self.run()
 
     def addUrls(self, *urls):
+        logger.debug(
+                'adding urls to class: %s' %(','.join(urls))
+        )
         self.urls.extend(urls)
 
-    def load(self, url):
-        if self.honor_robots_txt:
-            match = CRE_TOPLEVEL_WWW_DIR.match(url)
-            if match:
-                robots_url = match.groups()[0] + '/robots.txt'
-                self.robots_parser.set_url(robots_url)
+    def checkRobotTXT(self, url):
+        match = CRE_TOPLEVEL_WWW_DIR.match(url)
+        if match:
+            robots_url = match.groups()[0] + '/robots.txt'
+            self.robots_parser.set_url(robots_url)
+            try:
                 self.robots_parser.read()
-            else:
-                if self.debug:
-                    sys.stdout.write('%s is not a valid url. Trying next url.\n' %(url))
+            except IOError, error:
+                if error.errno == 'socket error':
+                    logger.exception(error)
                     self.run()
-            useragent = self.settings.get_property('user-agent')
-            if not self.robots_parser.can_fetch(useragent, url):
-                if self.debug:
-                    sys.stdout.write(
-                            'Getting url: %s is not allowed for useragent: %s.' +
-                            'Trying next url.\n' %(url, useragent)
-                    )
-                    self.run()
+                else:
+                    raise
+        else:
+            logger.info(
+                    '%s is not a valid url. Trying next url.' %(url)
+            )
+            self.run()
+        useragent = self.settings.get_property('user-agent')
+        if not self.robots_parser.can_fetch(useragent, url):
+            logger.info(
+                    'Getting url: %s is not allowed for useragent: %s. ' +
+                    'Trying next url.' %(url, useragent)
+            )
+            self.run()
+
+    def load(self, url):
+        logger.debug(
+                'connecting browser to load-finished event'
+        )
         self.load_finished_event = self.browser.connect(
                 'load-finished',
-                self.printWebsite
+                self.loadFinished
+        )
+        logger.debug(
+                'connecting browser to load-started event'
         )
         self.load_started_event = self.browser.connect(
                 'load-started',
                 self.loadStarted
         )
-        self.last_url = url
-        if self.debug:
-            sys.stdout.write('loading url: %s\n' %(url))
+        logger.info('loading url: %s' %(url))
         self.browser.open(url)
 
     def loadStarted(self, webview, frame):
+        logger.debug(
+                'load of site %s started. setting timer to %s'
+                %(self.last_url, self.timeout)
+        )
         signal.alarm(self.timeout)
 
     def loadTimeout(self, signum, frame):
-        if self.debug:
-            sys.stdout.write(
-                    'Timeout after %s seconds happend while loading url: %s.\n'
-                    %(self.timeout, self.last_url)
-            )
-        self.printWebsite(None, None)
+        logger.info(
+                'Timeout after %s seconds happend while loading url: %s.'
+                %(self.timeout, self.last_url)
+        )
+        self.printWebsite()
 
     def deleteEvent(self, widget, event, data=None):
         return False
 
     def destroyEvent(self, widget, data=None):
+        logger.debug('exiting now!')
         gtk.main_quit()
         sys.exit(0)
 
@@ -171,10 +221,11 @@ class BrowserWindow(gtk.Window):
         if self.urls:
             url = self.urls.pop(0)
             self.last_url = url
+            if self.honor_robots_txt:
+                self.checkRobotTXT(url)
             self.load(url)
         else:
-            if self.debug:
-                sys.stdout.write('No more urls to load.\n')
+            logger.info('No more urls to load.')
             self.emit('destroy')
 
 
@@ -187,7 +238,8 @@ if __name__ == '__main__':
             '[--set-useragent AGENT] [--enable-file-access-from-file-uris] ' +
             '[--timeout TIMEOUT] [--time-format FORMAT] [--dir DIR] ' +
             '[--file-prefix PREFIX] [--http-proxy|--https-proxy ADDR] ' +
-            '[--proxy-credentials PATH] [--debug] [--no-honor-robots-txt] URLs'
+            '[--proxy-credentials PATH] [--debug LEVEL] ' +
+            '[--ignore-robots-txt] URLs'
     ) %(prog)
     parser = OptionParser(usage=usage, version='%s %s' %(prog, __version__))
     parser.add_option(
@@ -298,13 +350,17 @@ if __name__ == '__main__':
     parser.add_option(
             '--debug',
             dest='debug',
-            action='store_true',
-            default=False,
-            help='Set this to see some messages. [Default: %default]'
+            default='NOTSET',
+            metavar='LEVEL',
+            help=(
+                'Set this to see some messages. Possible Values are: ' +
+                'NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL ' +
+                '[Default: %default]'
+            )
     )
     parser.add_option(
-            '--no-honor-robots-txt',
-            dest='honor_robots_txt',
+            '--ignore-robots-txt',
+            dest='robots_txt',
             action='store_false',
             default=True,
             help=(
@@ -313,6 +369,14 @@ if __name__ == '__main__':
             )
     )
     (options, args) = parser.parse_args()
+    options.debug = options.debug.upper()
+    if not getattr(logging, options.debug, None):
+        sys.stderr.write( 
+                '\nError: %s is not a valid debug value\n' %(options.debug)
+        )
+        parser.print_help()
+        sys.exit(0)
+    handler.setLevel(getattr(logging, options.debug))
     if not args:
         sys.stderr.write(
                 'You must give at least one url.\n'
@@ -389,7 +453,8 @@ if __name__ == '__main__':
             dirname=options.dirname,
             file_prefix=options.file_prefix,
             debug=options.debug,
-            honor_robots_txt=options.honor_robots_txt
+            honor_robots_txt=options.robots_txt,
+            logger=logger
     )
     browser.addUrls(*urls)
     browser.run()
