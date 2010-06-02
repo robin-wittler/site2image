@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __licence__ = 'BSD'
 
 import os
@@ -96,10 +96,12 @@ class BrowserWindow(gtk.Window):
                 0,
                 *snapshot_size
         )
+        short_url = CRE_SHORT_URL.match(self.last_url).groups()[0]
         if pixbuffer != None:
             path = os.path.join(
                         self.dirname,
                         self.file_prefix + '-' +
+                        short_url + '-' +
                         datetime.datetime.now().strftime(self.time_format) +
                         '-' + str(randint(100000, 999999)) +
                         '.png'
@@ -142,6 +144,7 @@ class BrowserWindow(gtk.Window):
                 'load-started',
                 self.loadStarted
         )
+        self.last_url = url
         if self.debug:
             sys.stdout.write('loading url: %s\n' %(url))
         self.browser.open(url)
