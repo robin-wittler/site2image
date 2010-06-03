@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 __licence__ = 'BSD'
 
 import os
@@ -53,9 +53,7 @@ class BrowserWindow(gtk.Window):
             time_format='%Y%m%d-%H%M%S.%s',
             dirname='/tmp',
             file_prefix='site2image',
-            debug='NOTSET',
             honor_robots_txt=True,
-            logger=None
     ):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_decorated(False)
@@ -166,16 +164,19 @@ class BrowserWindow(gtk.Window):
                     raise
         else:
             logger.info(
-                    '%s is not a valid url. Trying next url.' %(url)
+                    '%s is not a valid url.' %(url)
             )
             self.run()
         useragent = self.settings.get_property('user-agent')
         if not self.robots_parser.can_fetch(useragent, url):
-            logger.info(
-                    'Getting url: %s is not allowed for useragent: %s. ' +
-                    'Trying next url.' %(url, useragent)
+            logger.debug(
+                    'useragnt %s is not allowed to fetch %s.' %(url, useragent)
             )
             self.run()
+        else:
+            logger.debug(
+                    'useragent %s is allowed to fetch %s' %(useragent, url)
+            )
 
     def load(self, url):
         logger.debug(
@@ -197,7 +198,7 @@ class BrowserWindow(gtk.Window):
 
     def loadStarted(self, webview, frame):
         logger.debug(
-                'load of site %s started. setting timer to %s'
+                'load of site %s started. setting timer to %s seconds.'
                 %(self.last_url, self.timeout)
         )
         signal.alarm(self.timeout)
@@ -370,13 +371,15 @@ if __name__ == '__main__':
     )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
-    if not getattr(logging, options.debug, None):
+    if options.debug not in logging.__dict__:
         sys.stderr.write( 
                 '\nError: %s is not a valid debug value\n' %(options.debug)
         )
         parser.print_help()
         sys.exit(0)
-    handler.setLevel(getattr(logging, options.debug))
+    loglevel = getattr(logging, options.debug)
+    logger.setLevel(loglevel)
+    handler.setLevel(loglevel)
     if not args:
         sys.stderr.write(
                 'You must give at least one url.\n'
@@ -452,9 +455,7 @@ if __name__ == '__main__':
             time_format=options.time_format,
             dirname=options.dirname,
             file_prefix=options.file_prefix,
-            debug=options.debug,
             honor_robots_txt=options.robots_txt,
-            logger=logger
     )
     browser.addUrls(*urls)
     browser.run()
