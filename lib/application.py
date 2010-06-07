@@ -8,6 +8,7 @@ import os
 import sys
 import gobject
 import datetime
+from PIL import Image
 from uritool import Uri
 from random import randint
 from lib.logtool import logger
@@ -17,7 +18,7 @@ from robotparser import RobotFileParser
 __author__ = 'Robin Wittler'
 __contact__ = 'real@the-real.org'
 __licence__ = 'GPL3'
-__version__ = '0.1.0'
+__version__ = '0.2.0'
 
 class GtkSnapshotApplication(object):
     class Error(Exception):
@@ -47,6 +48,9 @@ class GtkSnapshotApplication(object):
         self.robotsparser = RobotFileParser()
         self.timeout_accured = False
         self.timer = None
+        self.thumbnails = options.thumbnails
+        self.thumbnail_width = options.thumbnail_width
+        self.thumbnail_height = options.thumbnail_height
 
     def addUri(self, uri):
         self.uri = Uri(uri)
@@ -170,12 +174,21 @@ class GtkSnapshotApplication(object):
              logger.debug(
                      'snapshot successfully saved to %s' %(path)
              )
+             if self.thumbnails:
+                 image = Image.open(path)
+                 image.thumbnail(
+                         (self.thumbnail_width, self.thumbnail_height),
+                         Image.ANTIALIAS
+                 )
+                 image.save(path + '.thumbnail', 'PNG')
+                 logger.debug(
+                         'thumbnail saved to %s' %(path + '.thumbnail'))
          else:
              logger.debug(
                      'no snapshot for url: %s taken' %(self.uri.asStr())
               )
          self.browser.open('about:')
-         self.info(
+         logger.info(
                  'all actions for url: %s done' %(self.uri.asStr())
          )
          gtk.main_quit()

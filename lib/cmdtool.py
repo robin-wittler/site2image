@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.0.2'
+__version__ = '0.1.0'
 __licence__ = 'GPL3'
 
 import os
@@ -22,7 +22,8 @@ def cmdline_parse(version=None):
             '[--timeout TIMEOUT] [--time-format FORMAT] [--dir DIR] ' +
             '[--file-prefix PREFIX] [--http-proxy|--https-proxy ADDR] ' +
             '[--proxy-credentials PATH] [--debug LEVEL] ' +
-            '[--ignore-robots-txt] URLs'
+            '[--ignore-robots-txt] [--thumbnail-size SIZE] ' +
+            '[--disable-thumbnails] URLs'
     ) %(prog)
     version = version or __version__
     parser = OptionParser(usage=usage, version='%s %s' %(prog, version))
@@ -152,6 +153,20 @@ def cmdline_parse(version=None):
                 '[Default: honor robots.txt]'
             )
     )
+    parser.add_option(
+            '--thumbnail-size',
+            dest='thumbnail_size',
+            default='50x50',
+            metavar='SIZE',
+            help='Set the thumbnails size. [Default: %default]'
+    )
+    parser.add_option(
+            '--disable-thumbnails',
+            dest='thumbnails',
+            default=False,
+            action='store_true',
+            help='Set this to disable thumbnails. [Default: %default]'
+    )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
     if options.debug not in logging.__dict__:
@@ -256,4 +271,18 @@ def cmdline_parse(version=None):
         if not (url.startswith('http://') or url.startswith('https://')):
             url = 'http://' + url
         urls.append(url)
+
+    if options.thumbnail_size:
+        try:
+            thumbnail_width, thumbnail_height = \
+                    options.thumbnail_size.split('x')
+        except ValueError:
+            sys.stderr.write(
+                    'The format for thumbnail size is Width x Height' +
+                    '(e.g. 50x50)\n'
+            )
+            sys.exit(0)
+        options.thumbnail_width = int(thumbnail_width.rstrip(' '))
+        options.thumbnail_height = int(thumbnail_height.lstrip(' '))
+
     return options, urls
