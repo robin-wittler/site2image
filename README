@@ -1,5 +1,12 @@
-The Proxy Credential File must have the following format:
-
-[proxy_auth]
+#The Proxy Credential File must have the following format:
+#
+# if http auth used
+[http_proxy_auth]
 username = foo
 password = bar
+
+# if https auth used
+[https_proxy_auth]
+username = foo
+password = bar
+
