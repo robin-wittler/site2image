@@ -6,7 +6,6 @@ from lib.uritool import Uri
 from lib.window import Window
 from lib.cmdtool import cmdline_parse
 from lib.browser import WebkitWebView
-from robotparser import RobotFileParser
 from lib.logtool import logger, logging, handler
 from lib.application import GtkSnapshotApplication
 
