@@ -163,8 +163,8 @@ def cmdline_parse(version=None):
     parser.add_option(
             '--disable-thumbnails',
             dest='thumbnails',
-            default=False,
-            action='store_true',
+            default=True,
+            action='store_false',
             help='Set this to disable thumbnails. [Default: %default]'
     )
     (options, args) = parser.parse_args()
