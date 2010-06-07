@@ -1,3 +1,7 @@
+#start snapshoting:
+#xvfb-run --server-args="-screen 0, 1024x768x24" site2image urls
+
+
 #The Proxy Credential File must have the following format:
 #
 # if http auth used
@@ -9,4 +13,5 @@ password = bar
 [https_proxy_auth]
 username = foo
 password = bar
+
 
