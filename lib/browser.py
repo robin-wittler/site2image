@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
+# -*- coding: utf-8 -*-
 
 __author__ = 'Robin Wittler'
 __contact__ = 'real@the-real.org'
