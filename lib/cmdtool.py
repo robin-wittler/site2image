@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 __author__ = 'Robin Wittler <real@the-real.org>'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 __licence__ = 'GPL3'
 
 import os
 import sys
-import webkit
 import locale
 import logging
 from optparse import OptionParser
@@ -66,7 +65,10 @@ def cmdline_parse(version=None):
             '--set-useragent',
             dest='user_agent',
             metavar='AGENT',
-            default=webkit.WebSettings().get_property('user-agent'),
+            default=(
+                'site2image - a webkit based websnapper. Version %s.'
+                %(version)
+            ),
             help='Set the Useragent String. [Default: %default]'
     )
     parser.add_option(
