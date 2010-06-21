@@ -275,6 +275,9 @@ class SnapshotApp(object):
              logger.debug(
                      'Thumbnail saved to %s' %(path + '-thumbnail.png')
              )
+             if options.thumbnails_only:
+                 os.remove(path + '.png')
+                 logger.info('Removed %s' %(path + '.png'))
 
         self.run()
 
@@ -498,11 +501,24 @@ def cmdline_parse(version=None):
             default=0,
             type='int',
             metavar='SECONDS',
-            help='Add n seconds for a delayd snapshot. [Default %default]'
+            help='Add n seconds for a delayed snapshot. [Default %default]'
     )
-
+    parser.add_option(
+            '--thumbnails-only',
+            dest='thumbnail_only',
+            action='store_true',
+            default=False,
+            help='Set this to get only thumbnails. [Default: %default]'
+    )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
+    if options.thumbnails_only and not options.thumbnails:
+        sys.stderr.write(
+                '--thumbnail-only and --disable-thumbnail ' +
+                'could not be used together.\n'
+        )
+        parser.print_help()
+        sys.exit(0)
     if options.debug not in logging.__dict__:
         sys.stderr.write(
                 '\nError: %s is not a valid debug value\n' %(options.debug)
