@@ -88,7 +88,7 @@ class HttpUri(Uri):
     def __init__(self, uri):
         super(HttpUri, self).__init__(uri)
         if not self.protocol in ('http', 'https'):
-            raise self.HtppUriError(
+            raise self.HttpUriError(
                     '%s is not a valid http(s) uri form'
                     %(repr(uri))
             )
