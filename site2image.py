@@ -281,11 +281,8 @@ class SnapshotApp(object):
     def checkUrl(self, url):
         try:
             self.last_url = HttpUri(url)
-        except HttpUri.HttpUriError:
-            logger.info(
-                    '%s is not a valid http(s) url'
-                    %(repr(url))
-            )
+        except (Uri.UriError, HttpUri.HttpUriError), error:
+            logger.info(error)
             self.run()
         else:
             if options.honor_robots_txt:
