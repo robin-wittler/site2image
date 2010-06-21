@@ -439,7 +439,7 @@ def cmdline_parse(version=None):
     parser.add_option(
             '--http-proxy',
             dest='http_proxy',
-            metavar='PROXY_ADDR',
+            metavar='PROXY_ADDR:PROXY_PORT',
             default=None,
             help='Set this if you use a http(s) proxy. [Default: %default]'
     )
