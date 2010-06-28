@@ -4,6 +4,8 @@
 import os
 import re
 import sys
+import errno
+import signal
 import locale
 import logging
 
@@ -22,6 +24,7 @@ from PyQt4 import QtCore
 from PyQt4 import QtWebKit
 from PyQt4 import QtNetwork
 
+from glob import glob
 from PIL import Image
 from time import sleep
 from random import randint
@@ -29,6 +32,8 @@ from datetime import datetime
 from optparse import OptionParser
 from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
+
+
 
 logger = logging.getLogger(sys.argv[0])
 logger.setLevel(logging.DEBUG)
@@ -196,7 +201,7 @@ class SnapshotApp(object):
         )
 
     def _loadStarted(self):
-        logger.info(
+        logger.debug(
                 'Loading of url %s started' %(self.last_url)
         )
         self.timer.start(self.options.timeout * 1000)
@@ -207,7 +212,7 @@ class SnapshotApp(object):
                 QtCore.SIGNAL('loadFinished(bool)'),
                 self._loadFinished
         )
-        logger.info(
+        logger.debug(
                 'Timeout while loading url %s after %s seconds received'
                 %(self.last_url, self.options.timeout)
         )
@@ -215,27 +220,42 @@ class SnapshotApp(object):
         self.takeSnapshot()
 
     def _loadFinished(self):
-        logger.info(
+        logger.debug(
                 'Loading url %s is complete' %(self.last_url)
         )
         self.timer.stop()
         self.takeSnapshot()
 
-    def createPathName(self):
-        return os.path.join(
-                self.options.dirname,
-                self.options.file_prefix + '-' +
-                self.last_url.toplevel + '-' +
-                datetime.now().strftime(self.options.time_format) + '-' +
-                str(randint(100000, 999999))
-        )
+    def createTimestamp(self, time_format=None):
+        time_format = time_format or self.options.time_format
+        return datetime.now().strftime(time_format)
 
+    def createRandomInt(self, start=100000, stop=999999):
+        return str(randint(100000, 999999))
+
+    def _createPathName(self, dirname, fileprefix, urlpart=None,
+            timestamp=None, filesuffix=None):
+
+        filename = '-'.join(
+                filter(lambda x: x, (fileprefix, urlpart, timestamp, filesuffix))
+        )
+        return os.path.join(dirname, filename)
+
+    def createPathName(self):
+        self.last_timestamp = self.createTimestamp()
+        return self._createPathName(
+                self.options.dirname,
+                self.options.file_prefix,
+                urlpart=self.last_url.toplevel,
+                timestamp=self.last_timestamp,
+                filesuffix=self.createRandomInt()
+        )
 
     def takeSnapshot(self):
         #sometimes the painter engine is not ready - for whatever reasons ;)
         #so hopefully adding a nap could "fix" this
         if self.options.snap_delay:
-            logger.info(
+            logger.debug(
                     'Taking a %s seconds nap before take the snap ;)'
                     %(self.options.snap_delay)
             )
@@ -260,9 +280,7 @@ class SnapshotApp(object):
             self.run()
         else:
             logger.debug('Snapshot saved to %s' %(path + '.png'))
-
         if self.options.thumbnails and self.options.thumbnail_size:
-             #the qt own scaler is not cute enough ... we take PIL
              image = Image.open(path + '.png')
              image.thumbnail(
                      (
@@ -278,7 +296,6 @@ class SnapshotApp(object):
              if options.thumbnails_only:
                  os.remove(path + '.png')
                  logger.info('Removed %s' %(path + '.png'))
-
         self.run()
 
     def checkUrl(self, url):
@@ -335,13 +352,120 @@ class SnapshotApp(object):
             logger.info('No more url to load.')
             self.app.quit()
 
+    def start(self):
+        self.run()
+
+class WatchdirSnapshotApp(SnapshotApp):
+    def __init__(self, qtapp, options):
+        SnapshotApp.__init__(self, qtapp, [], options)
+#        self.watchdir = watchdir
+
+        if not os.path.exists(self.options.watchdir):
+            raise IOError(
+                    errno.ENOENT,
+                    '%s does not exists.' %(self.options.watchdir)
+            )
+        if not os.path.isdir(self.options.watchdir):
+            raise IOError(
+                    errno.ENOTDIR,
+                    '%s is not a directory' %(self.options.watchdir)
+            )
+        if not os.access(self.options.watchdir, os.R_OK|os.X_OK):
+            raise IOError(
+                    errno.EACCES,
+                    'You have not the needed Permissions to look into %s'
+                    %(self.options.watchdir)
+            )
+        self._job_id = '^\s*(?P<name>job_id)\s*(?:=|:)+\s*(?P<value>.+)$'
+        self._job_url = '^\s*(?P<name>job_url)\s*(?:=|:)+\s*(?P<value>.+)$'
+        self.job_id = re.compile(self._job_id)
+        self.job_url = re.compile(self._job_url)
+        #signal.signal(signal.SIGINT, self._exit)
+
+    def getSnapshotJobs(self):
+        return glob(os.path.join(self.options.watchdir, '*.snap'))
+
+    def createPathName(self):
+        return os.path.join(
+                self.options.dirname,
+                self.options.file_prefix
+        )
+
+    def run(self):
+        if self.urls:
+            _id, _url = self.urls.pop(0)
+            self.checkUrl(_url)
+            self.options.file_prefix = _id
+            page = self.createPage()
+            self.browser = Browser(page)
+            self.browser.connect(
+                    self.browser,
+                    QtCore.SIGNAL('loadStarted()'),
+                    self._loadStarted
+            )
+            self.browser.connect(
+                    self.browser,
+                    QtCore.SIGNAL('loadFinished(bool)'),
+                    self._loadFinished
+            )
+            self.browser.getSite(self.last_url)
+        else:
+            self.start()
+
+    def _parse_jobs(self, *jobs):
+        _jobs = list()
+        for job in jobs:
+            try:
+                fh = open(job)
+            except:
+                continue
+            else:
+                lines = fh.readlines()
+                fh.close()
+                os.remove(job)
+            _id = _url = 0
+            for line in lines:
+                if not _id:
+                    match = self.job_id.match(line)
+                    if match:
+                        _id = match.groupdict().get('value')
+                        continue
+                if not _url:
+                    match = self.job_url.match(line)
+                    if match:
+                        _url = match.groupdict().get('value')
+                        if not (
+                                _url.startswith('http://') or
+                                _url.startswith('https://')
+                        ):
+                            _url = 'http://' + _url
+                        continue
+            else:
+                if _id and _url:
+                    _jobs.append((_id, _url))
+        return _jobs
+
+    def _exit(self, signum, frame):
+        logger.info('Exiting now!')
+        self.app.quit()
+
+    def start(self):
+        while not self.urls:
+            jobs = self.getSnapshotJobs()
+            if not jobs:
+                sleep(options.watchtime)
+            else:
+                self.urls = self._parse_jobs(*jobs)
+        else:
+            self.run()
+
 def cmdline_parse(version=None):
     prog = os.path.basename(sys.argv[0])
     usage = (
             '%s: [--version] [-h|--help] [--enable-scripts] ' +
             '[--enable-java-applet] [--enable-private-browsing] ' +
-            '[--enable-plugins] ' +
-            '[--set-useragent AGENT] ' +
+            '[--enable-plugins] [--watchdir DIR]' +
+            '[--set-useragent AGENT] [--thumbnails-only]' +
             '[--timeout TIMEOUT] [--time-format FORMAT] [--dir DIR] ' +
             '[--file-prefix PREFIX] [--http-proxy ADDR] ' +
             '[--proxy-credentials PATH] [--debug LEVEL] ' +
@@ -505,10 +629,28 @@ def cmdline_parse(version=None):
     )
     parser.add_option(
             '--thumbnails-only',
-            dest='thumbnail_only',
+            dest='thumbnails_only',
             action='store_true',
             default=False,
             help='Set this to get only thumbnails. [Default: %default]'
+    )
+    parser.add_option(
+            '--watchdir',
+            dest='watchdir',
+            metavar='DIR',
+            default=None,
+            help=(
+                'Set a directory to be watched for job files. ' +
+                '[Default: %default]'
+            )
+    )
+    parser.add_option(
+            '--watchtime',
+            dest='watchtime',
+            metavar='SECONDS',
+            default=10,
+            type='int',
+            help='Set the time to poll the watch dir. [Default: %default]'
     )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
@@ -525,7 +667,7 @@ def cmdline_parse(version=None):
         )
         parser.print_help()
         sys.exit(0)
-    if not args:
+    if not args and not options.watchdir:
         sys.stderr.write(
                 'You must give at least one url.\n'
         )
@@ -617,6 +759,11 @@ if __name__ == '__main__':
     options, urls = cmdline_parse()
     logger.setLevel(getattr(logging, options.debug))
     app = QtGui.QApplication([])
-    snapper = SnapshotApp(app, urls, options)
-    snapper.run()
+    if options.watchdir:
+    #    doubleFork()
+        snapper = WatchdirSnapshotApp(app, options)
+        signal.signal(signal.SIGINT, snapper._exit)
+    else:
+        snapper = SnapshotApp(app, urls, options)
+    snapper.start()
     sys.exit(app.exec_())
