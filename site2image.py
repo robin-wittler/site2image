@@ -220,7 +220,7 @@ class SnapshotApp(object):
         return datetime.now().strftime(time_format)
 
     def createRandomInt(self, start=100000, stop=999999):
-        return str(randint(100000, 999999))
+        return str(randint(start, stop))
 
     def _createPathName(self, dirname, fileprefix, urlpart=None,
             timestamp=None, filesuffix=None):
