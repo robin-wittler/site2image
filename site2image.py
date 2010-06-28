@@ -9,7 +9,6 @@ import signal
 import locale
 import logging
 
-
 #with pyside i got segmentation faults :(
 #if you wanne test it, just comment out all
 #pyside imports and comment in all PyQt4 imports
@@ -28,23 +27,13 @@ from glob import glob
 from PIL import Image
 from time import sleep
 from random import randint
+from logging import handlers
 from datetime import datetime
 from optparse import OptionParser
 from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
 
 
-
-logger = logging.getLogger(sys.argv[0])
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-        '%(asctime)s %(name)s[%(process)d] ' +
-        '%(levelname)s: %(message)s'
-)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
 
 
 __author__ = 'Robin Wittler'
@@ -349,7 +338,7 @@ class SnapshotApp(object):
             )
             self.browser.getSite(self.last_url)
         else:
-            logger.info('No more url to load.')
+            logger.info('No more urls to load.')
             self.app.quit()
 
     def start(self):
@@ -380,7 +369,6 @@ class WatchdirSnapshotApp(SnapshotApp):
         self._job_url = '^\s*(?P<name>job_url)\s*(?:=|:)+\s*(?P<value>.+)$'
         self.job_id = re.compile(self._job_id)
         self.job_url = re.compile(self._job_url)
-        #signal.signal(signal.SIGINT, self._exit)
 
     def getSnapshotJobs(self):
         return glob(os.path.join(self.options.watchdir, '*.snap'))
@@ -445,9 +433,9 @@ class WatchdirSnapshotApp(SnapshotApp):
                     _jobs.append((_id, _url))
         return _jobs
 
-    def _exit(self, signum, frame):
-        logger.info('Exiting now!')
-        self.app.quit()
+    #def _exit(self, signum, frame):
+    #    logger.info('Exiting now!')
+    #    self.app.quit()
 
     def start(self):
         while not self.urls:
@@ -652,6 +640,33 @@ def cmdline_parse(version=None):
             type='int',
             help='Set the time to poll the watch dir. [Default: %default]'
     )
+    parser.add_option(
+            '--display',
+            dest='display',
+            metavar='DISPLAY',
+            default=None,
+            help=(
+                'Force the DISPLAY to use. ' +
+                'If none given (the default) it tries to get ' +
+                'the DISPLAY from enviroment. If DISPLAY is not set in ' +
+                'enviroment (in case you use xvfb) it tries to use ' +
+                'DISPLAY=:99 wich is the default xvfb display.'
+            )
+    )
+    parser.add_option(
+            '--no-logfile',
+            dest='disable_logfile',
+            action='store_true',
+            default=False,
+            help='Set this option if you want no logfile. [Default: %default]'
+    )
+    parser.add_option(
+            '--logfile',
+            dest='logfile',
+            default='/tmp/%s.log' %(prog),
+            metavar='PATH',
+            help='Set a path to the logfile. [Default: %default]'
+    )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
     if options.thumbnails_only and not options.thumbnails:
@@ -757,12 +772,30 @@ def cmdline_parse(version=None):
 
 if __name__ == '__main__':
     options, urls = cmdline_parse()
+    logger = logging.getLogger(sys.argv[0])
     logger.setLevel(getattr(logging, options.debug))
+    formatter = logging.Formatter(
+            '%(asctime)s %(name)s[%(process)d] ' +
+            '%(levelname)s: %(message)s'
+    )
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.DEBUG)
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
+    if not options.disable_logfile:
+        file_handler = handlers.WatchedFileHandler(options.logfile)
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+
+    if options.display:
+        os.environ['DISPLAY'] = options.display
+    elif not os.environ['DISPLAY']:
+        os.environ['DISPLAY'] = ':99'
     app = QtGui.QApplication([])
     if options.watchdir:
-    #    doubleFork()
         snapper = WatchdirSnapshotApp(app, options)
-        signal.signal(signal.SIGINT, snapper._exit)
+        #signal.signal(signal.SIGINT, snapper._exit)
     else:
         snapper = SnapshotApp(app, urls, options)
     snapper.start()
