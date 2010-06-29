@@ -34,12 +34,13 @@ from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
 
 
+logger = logging.getLogger(sys.argv[0])
 
 
 __author__ = 'Robin Wittler'
 __contact__ = 'real@the-real.org'
 __licence__ = 'GPL3'
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 
 class Uri(str):
     PATTERN_URI = '^(?P<protocol>\w+)\:\/\/(?P<toplevel>[\.\w\-_]+?)(?P<request>\/.*)?$'
@@ -146,9 +147,9 @@ class Browser(QtWebKit.QWebView):
         self.load(QtCore.QUrl(url))
 
 
-class SnapshotApp(object):
-    def __init__(self, qtapp, urls, options):
-        self.app = qtapp
+class SnapshotApp(QtGui.QApplication):
+    def __init__(self, urls, options):
+        QtGui.QApplication.__init__(self, [])
         self.urls = urls
         self.options = options
         self.getNetworkSettings()
@@ -161,7 +162,6 @@ class SnapshotApp(object):
         self.robotsparser = RobotFileParser()
 
     def getNetworkSettings(self):
-        #proxy = None
         if self.options.http_proxy:
             if getattr(self.options, 'http_proxy_user', None):
                 self.proxy = HttpProxySettings(
@@ -177,11 +177,10 @@ class SnapshotApp(object):
                 )
         else:
             self.proxy = None
-        #return proxy
 
     def createPage(self, proxy=None):
         return Page(
-                useragent=options.user_agent,
+                useragent=self.options.user_agent,
                 proxy=self.proxy,
                 JavascriptEnabled=self.options.enable_scripts,
                 JavaEnabled=self.options.enable_java_applet,
@@ -339,15 +338,14 @@ class SnapshotApp(object):
             self.browser.getSite(self.last_url)
         else:
             logger.info('No more urls to load.')
-            self.app.quit()
+            self.quit()
 
     def start(self):
         self.run()
 
 class WatchdirSnapshotApp(SnapshotApp):
-    def __init__(self, qtapp, options):
-        SnapshotApp.__init__(self, qtapp, [], options)
-#        self.watchdir = watchdir
+    def __init__(self,options):
+        SnapshotApp.__init__(self, [], options)
 
         if not os.path.exists(self.options.watchdir):
             raise IOError(
@@ -433,15 +431,11 @@ class WatchdirSnapshotApp(SnapshotApp):
                     _jobs.append((_id, _url))
         return _jobs
 
-    #def _exit(self, signum, frame):
-    #    logger.info('Exiting now!')
-    #    self.app.quit()
-
     def start(self):
         while not self.urls:
             jobs = self.getSnapshotJobs()
             if not jobs:
-                sleep(options.watchtime)
+                sleep(self.options.watchtime)
             else:
                 self.urls = self._parse_jobs(*jobs)
         else:
@@ -508,14 +502,6 @@ def cmdline_parse(version=None):
             ),
             help='Set the Useragent String. [Default: %default]'
     )
-#this setting does not exist in the QtWebKit?
-#    parser.add_option(
-#            '--enable-file-access-from-file-uris',
-#            dest='enable_file_access_from_file_uris',
-#            default=False,
-#            action='store_true',
-#            help='Set this to allow file uris. [Default: %default]'
-#    )
     parser.add_option(
             '--timeout',
             dest='timeout',
@@ -555,13 +541,6 @@ def cmdline_parse(version=None):
             default=None,
             help='Set this if you use a http(s) proxy. [Default: %default]'
     )
-#    parser.add_option(
-#            '--https-proxy',
-#            dest='https_proxy',
-#            metavar='PROXY_ADDR',
-#            default=None,
-#            help='Set this if you use a https proxy. [Default: %default]'
-#    )
     parser.add_option(
             '--proxy-credentials',
             dest='proxy_credentials',
@@ -667,6 +646,30 @@ def cmdline_parse(version=None):
             metavar='PATH',
             help='Set a path to the logfile. [Default: %default]'
     )
+    parser.add_option(
+            '--no-stdout-logging',
+            dest='disable_stdout_logging',
+            default=False,
+            action='store_true',
+            help='Set this to disable logging on stdout. [Default: %default]'
+    )
+    parser.add_option(
+            '--start-xvfb',
+            dest='xvfb',
+            default=False,
+            action='store_true',
+            help=(
+                'Set this if %s should start xvfb for you ' %(prog) +
+                '[Default: %default]'
+            )
+    )
+    parser.add_option(
+            '--tty',
+            dest='tty',
+            default='tty9',
+            metavar='TTY',
+            help='Set this to a tty Xvfb should use. [Default: %default]'
+    )
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
     if options.thumbnails_only and not options.thumbnails:
@@ -769,34 +772,90 @@ def cmdline_parse(version=None):
 
     return options, urls
 
-
-if __name__ == '__main__':
-    options, urls = cmdline_parse()
-    logger = logging.getLogger(sys.argv[0])
-    logger.setLevel(getattr(logging, options.debug))
+def set_logging(options):
+    loglevel = getattr(logging, options.debug)
+    logger.setLevel(loglevel)
     formatter = logging.Formatter(
             '%(asctime)s %(name)s[%(process)d] ' +
             '%(levelname)s: %(message)s'
     )
     stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.DEBUG)
-    stream_handler.setFormatter(formatter)
-    logger.addHandler(stream_handler)
+    if not options.disable_stdout_logging:
+        stream_handler.setLevel(loglevel)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
     if not options.disable_logfile:
         file_handler = handlers.WatchedFileHandler(options.logfile)
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(loglevel)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
+def set_display(options):
     if options.display:
         os.environ['DISPLAY'] = options.display
-    elif not os.environ['DISPLAY']:
+    try:
+        display = os.environ['DISPLAY']
+    except KeyError:
         os.environ['DISPLAY'] = ':99'
-    app = QtGui.QApplication([])
+    return os.environ['DISPLAY']
+
+def get_display():
+    try:
+        return os.environ['DISPLAY']
+    except KeyError:
+        return None
+
+def daemonize():
+    # do the UNIX double-fork magic, see Stevens' "Advanced
+    # Programming in the UNIX Environment" for details (ISBN 0201563177)
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError, error:
+        logger.error('fork #1 failed: %d (%s)' %(error.errno, error.strerror))
+        sys.exit(1)
+
+    # decouple from parent environment
+    # first do chdir, because setsid 'umounts' stuff and without
+    # chdir we could get a DEVICE_IN_USE error
+    os.chdir("/")
+    # decouple from tty
+    os.setsid()
+    os.umask(0)
+
+    # do second fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            sys.exit(0)
+    except OSError, error:
+        logger.error('fork #2 failed: %d (%s)' %(error.errno, error.strerror))
+        sys.exit(1)
+
+def start_xvfb(display, tty):
+    import subprocess
+    cmd = subprocess.Popen(
+            ['nohup Xvfb %s -screen 0 1024x768x24 -nolisten tcp %s &'
+                %(display, tty)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            shell=True, close_fds=True
+    )
+    cmd.wait()
+    if cmd.returncode:
+        RuntimeError(stderr)
+    return True
+
+if __name__ == '__main__':
+    options, urls = cmdline_parse()
+    options.used_display = set_display(options)
+    set_logging(options)
     if options.watchdir:
-        snapper = WatchdirSnapshotApp(app, options)
-        #signal.signal(signal.SIGINT, snapper._exit)
+        if options.xvfb:
+            start_xvfb(options.used_display, options.tty)
+        daemonize()
+        snapper = WatchdirSnapshotApp(options)
     else:
-        snapper = SnapshotApp(app, urls, options)
+        snapper = SnapshotApp(urls, options)
     snapper.start()
-    sys.exit(app.exec_())
+    sys.exit(snapper.exec_())
