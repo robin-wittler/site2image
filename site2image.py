@@ -8,6 +8,8 @@ import errno
 import signal
 import locale
 import logging
+import atexit
+
 
 #with pyside i got segmentation faults :(
 #if you wanne test it, just comment out all
@@ -628,7 +630,7 @@ def cmdline_parse(version=None):
             ('These options are only usefull in the watchmode')
     )
 
-    daemon_group.add_option(
+    parser.add_option(
             '--watchdir',
             dest='watchdir',
             metavar='DIR',
@@ -675,6 +677,17 @@ def cmdline_parse(version=None):
             default='tty9',
             metavar='TTY',
             help='Set this to a tty Xvfb should use. [Default: %default]'
+    )
+    daemon_group.add_option(
+            '--x-sleeptime',
+            dest='x_sleeptime',
+            default=3,
+            metavar='SECONDS',
+            type='int',
+            help=(
+                'Set this to let %s wait n seconds before ' %(prog) +
+                'it tries to connect to the x-server. [Default: %default]'
+            )
     )
     parser.add_option_group(daemon_group)
     (options, args) = parser.parse_args()
@@ -840,29 +853,79 @@ def daemonize():
         logger.error('fork #2 failed: %d (%s)' %(error.errno, error.strerror))
         sys.exit(1)
 
-def start_xvfb(display, tty):
+def start_xvfb(display, tty, sleeptime=10):
     import subprocess
+    cmd_line = (
+            'nohup Xvfb %s -screen 0 1024x768x24 -nolisten tcp %s &'
+            %(display, tty)
+    )
     cmd = subprocess.Popen(
-            ['nohup Xvfb %s -screen 0 1024x768x24 -nolisten tcp %s &'
-                %(display, tty)],
+            [cmd_line],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             shell=True, close_fds=True
     )
     cmd.wait()
+    sleep(sleeptime)
     if cmd.returncode:
         RuntimeError(stderr)
-    return True
+    return cmd_line.lstrip('nohup ').rstrip(' &')
+
 
 if __name__ == '__main__':
+    def kill_xvfb():
+        proc_dir = '/proc'
+        pids = [pid for pid in os.listdir(proc_dir) if pid.isdigit()]
+        for pid in pids:
+            cmd_line_path = os.path.join(proc_dir, '%s' %(pid), 'cmdline')
+            path_stat = os.stat(cmd_line_path)
+            if not path_stat.st_uid == os.geteuid():
+                continue
+            try:
+                fh = open(cmd_line_path)
+            except:
+                continue
+            else:
+                cmdline = fh.read().rstrip().replace('\x00', ' ').rstrip(' ')
+                fh.close()
+                if cmdline != xvfb_line:
+                    continue
+                try:
+                    os.kill(int(pid), signal.SIGTERM)
+                except Exeption, error:
+                    logger.error(
+                            'could not kill pid %s: %s' %(pid, error)
+                    )
+                    break
+                else:
+                    logger.info('killed xvfb @pid %s' %(pid))
+                    break
+        else:
+            logger.info('pid for xvfb not found')
+
+    def kill_snapper(signum, frame):
+        if options.xvfb:
+            kill_xvfb()
+        snapper.quit()
+        sys.exit(0)
+
     options, urls = cmdline_parse()
     options.used_display = set_display(options)
     set_logging(options)
     if options.watchdir:
-        if options.xvfb:
-            start_xvfb(options.used_display, options.tty)
         daemonize()
+        if options.xvfb:
+            xvfb_line = start_xvfb(
+                    options.used_display,
+                    options.tty,
+                    options.x_sleeptime
+            )
+        signal.signal(signal.SIGTERM, kill_snapper)
         snapper = WatchdirSnapshotApp(options)
+        logger.info('Startup')
     else:
         snapper = SnapshotApp(urls, options)
     snapper.start()
-    sys.exit(snapper.exec_())
+    if options.xvfb:
+        snapper.exec_()
+    else:
+        sys.exit(snapper.exec_())
