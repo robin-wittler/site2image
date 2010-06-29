@@ -29,6 +29,7 @@ from time import sleep
 from random import randint
 from logging import handlers
 from datetime import datetime
+from optparse import OptionGroup
 from optparse import OptionParser
 from robotparser import RobotFileParser
 from ConfigParser import SafeConfigParser
@@ -602,37 +603,6 @@ def cmdline_parse(version=None):
             help='Set this to get only thumbnails. [Default: %default]'
     )
     parser.add_option(
-            '--watchdir',
-            dest='watchdir',
-            metavar='DIR',
-            default=None,
-            help=(
-                'Set a directory to be watched for job files. ' +
-                '[Default: %default]'
-            )
-    )
-    parser.add_option(
-            '--watchtime',
-            dest='watchtime',
-            metavar='SECONDS',
-            default=10,
-            type='int',
-            help='Set the time to poll the watch dir. [Default: %default]'
-    )
-    parser.add_option(
-            '--display',
-            dest='display',
-            metavar='DISPLAY',
-            default=None,
-            help=(
-                'Force the DISPLAY to use. ' +
-                'If none given (the default) it tries to get ' +
-                'the DISPLAY from enviroment. If DISPLAY is not set in ' +
-                'enviroment (in case you use xvfb) it tries to use ' +
-                'DISPLAY=:99 wich is the default xvfb display.'
-            )
-    )
-    parser.add_option(
             '--no-logfile',
             dest='disable_logfile',
             action='store_true',
@@ -653,7 +623,43 @@ def cmdline_parse(version=None):
             action='store_true',
             help='Set this to disable logging on stdout. [Default: %default]'
     )
+    daemon_group = OptionGroup(
+            parser,
+            ('These options are only usefull in the watchmode')
+    )
+
+    daemon_group.add_option(
+            '--watchdir',
+            dest='watchdir',
+            metavar='DIR',
+            default=None,
+            help=(
+                'Set a directory to be watched for job files. ' +
+                '[Default: %default]'
+            )
+    )
+    daemon_group.add_option(
+            '--watchtime',
+            dest='watchtime',
+            metavar='SECONDS',
+            default=10,
+            type='int',
+            help='Set the time to poll the watch dir. [Default: %default]'
+    )
     parser.add_option(
+            '--display',
+            dest='display',
+            metavar='DISPLAY',
+            default=None,
+            help=(
+                'Force the DISPLAY to use. ' +
+                'If none given (the default) it tries to get ' +
+                'the DISPLAY from enviroment. If DISPLAY is not set in ' +
+                'enviroment (in case you use xvfb) it tries to use ' +
+                'DISPLAY=:99 wich is the default xvfb display.'
+            )
+    )
+    daemon_group.add_option(
             '--start-xvfb',
             dest='xvfb',
             default=False,
@@ -663,13 +669,14 @@ def cmdline_parse(version=None):
                 '[Default: %default]'
             )
     )
-    parser.add_option(
+    daemon_group.add_option(
             '--tty',
             dest='tty',
             default='tty9',
             metavar='TTY',
             help='Set this to a tty Xvfb should use. [Default: %default]'
     )
+    parser.add_option_group(daemon_group)
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
     if options.thumbnails_only and not options.thumbnails:
