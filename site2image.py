@@ -8,8 +8,6 @@ import errno
 import signal
 import locale
 import logging
-import atexit
-
 
 #with pyside i got segmentation faults :(
 #if you wanne test it, just comment out all
@@ -555,17 +553,6 @@ def cmdline_parse(version=None):
             )
     )
     parser.add_option(
-            '--debug',
-            dest='debug',
-            default='NOTSET',
-            metavar='LEVEL',
-            help=(
-                'Set this to see some messages. Possible Values are: ' +
-                'NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL ' +
-                '[Default: %default]'
-            )
-    )
-    parser.add_option(
             '--ignore-robots-txt',
             dest='honor_robots_txt',
             action='store_false',
@@ -604,21 +591,36 @@ def cmdline_parse(version=None):
             default=False,
             help='Set this to get only thumbnails. [Default: %default]'
     )
-    parser.add_option(
+    log_group = OptionGroup(
+            parser,
+            ('These options handles logging options')
+    )
+    log_group.add_option(
+            '--debug',
+            dest='debug',
+            default='NOTSET',
+            metavar='LEVEL',
+            help=(
+                'Set this to see some messages. Possible Values are: ' +
+                'NOTSET, DEBUG, INFO, WARNING, ERROR, CRITICAL ' +
+                '[Default: %default]'
+            )
+    )
+    log_group.add_option(
             '--no-logfile',
             dest='disable_logfile',
             action='store_true',
             default=False,
             help='Set this option if you want no logfile. [Default: %default]'
     )
-    parser.add_option(
+    log_group.add_option(
             '--logfile',
             dest='logfile',
             default='/tmp/%s.log' %(prog),
             metavar='PATH',
             help='Set a path to the logfile. [Default: %default]'
     )
-    parser.add_option(
+    log_group.add_option(
             '--no-stdout-logging',
             dest='disable_stdout_logging',
             default=False,
@@ -689,6 +691,7 @@ def cmdline_parse(version=None):
                 'it tries to connect to the x-server. [Default: %default]'
             )
     )
+    parser.add_option_group(log_group)
     parser.add_option_group(daemon_group)
     (options, args) = parser.parse_args()
     options.debug = options.debug.upper()
@@ -870,44 +873,43 @@ def start_xvfb(display, tty, sleeptime=10):
         RuntimeError(stderr)
     return cmd_line.lstrip('nohup ').rstrip(' &')
 
-
-if __name__ == '__main__':
-    def kill_xvfb():
-        proc_dir = '/proc'
-        pids = [pid for pid in os.listdir(proc_dir) if pid.isdigit()]
-        for pid in pids:
-            cmd_line_path = os.path.join(proc_dir, '%s' %(pid), 'cmdline')
-            path_stat = os.stat(cmd_line_path)
-            if not path_stat.st_uid == os.geteuid():
+def kill_xvfb():
+    proc_dir = '/proc'
+    pids = [pid for pid in os.listdir(proc_dir) if pid.isdigit()]
+    for pid in pids:
+        cmd_line_path = os.path.join(proc_dir, '%s' %(pid), 'cmdline')
+        path_stat = os.stat(cmd_line_path)
+        if not path_stat.st_uid == os.getuid():
+            continue
+        try:
+            fh = open(cmd_line_path)
+        except:
+            continue
+        else:
+            cmdline = fh.read().rstrip().replace('\x00', ' ').rstrip(' ')
+            fh.close()
+            if cmdline != xvfb_line:
                 continue
             try:
-                fh = open(cmd_line_path)
-            except:
-                continue
+                os.kill(int(pid), signal.SIGTERM)
+            except Exeption, error:
+                logger.error(
+                        'could not kill pid %s: %s' %(pid, error)
+                )
+                break
             else:
-                cmdline = fh.read().rstrip().replace('\x00', ' ').rstrip(' ')
-                fh.close()
-                if cmdline != xvfb_line:
-                    continue
-                try:
-                    os.kill(int(pid), signal.SIGTERM)
-                except Exeption, error:
-                    logger.error(
-                            'could not kill pid %s: %s' %(pid, error)
-                    )
-                    break
-                else:
-                    logger.info('killed xvfb @pid %s' %(pid))
-                    break
-        else:
-            logger.info('pid for xvfb not found')
+                logger.info('killed xvfb @pid %s' %(pid))
+                break
+    else:
+        logger.info('pid for xvfb not found')
 
-    def kill_snapper(signum, frame):
-        if options.xvfb:
-            kill_xvfb()
-        snapper.quit()
-        sys.exit(0)
+def kill_snapper(signum, frame):
+    if options.xvfb:
+        kill_xvfb()
+    snapper.quit()
+    sys.exit(0)
 
+if __name__ == '__main__':
     options, urls = cmdline_parse()
     options.used_display = set_display(options)
     set_logging(options)
