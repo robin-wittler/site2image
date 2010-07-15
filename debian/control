@@ -5,7 +5,7 @@ Maintainer: Robin Wittler <real@the-real.org>
 Build-Depends: debhelper (>= 7.0.50~)
 Build-Depends-Indep: python-support
 XS-Python-Version: all
-Standards-Version: 3.9.0
+Standards-Version: 3.8.4
 Homepage: http://github.com/robin-wittler/site2image
 Vcs-Git: git://github.com/robin-wittler/site2image.git
 Vcs-Browser: http://github.com/robin-wittler/site2image/tree/master
