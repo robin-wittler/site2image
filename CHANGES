@@ -1,0 +1,237 @@
+commit e13881c7528b39b286d8179e2581ab20a574f4b0
+Author: Robin Wittler <real@the-real.org>
+Date:   Thu Jul 15 12:30:41 2010 +0200
+
+    fixed braindead url.lower() bug
+
+commit 436ab8dbcc10f971c69d22dd24501d3a42f31efa
+Author: Robin Wittler <real@the-real.org>
+Date:   Wed Jul 14 14:57:53 2010 +0200
+
+    add description and disclaimer in --help
+
+commit 9816b93d8824f3d61a76bbc6918395c8f300cf87
+Author: Robin Wittler <real@the-real.org>
+Date:   Wed Jul 14 14:42:38 2010 +0200
+
+    add setup.py and LICENSE files
+
+commit d74d7f4bef708fd61af2cb3596ee30a43beee002
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jul 13 22:52:04 2010 +0200
+
+    splitted stuff into websnapper lib
+
+commit bcf67e2613c5f925d4edffb3156241cd982e7d5a
+Author: Robin Wittler <real@the-real.org>
+Date:   Wed Jun 30 18:43:18 2010 +0200
+
+    get log options into a group
+
+commit 983ac2af828c609077ad87490dcc281081e6bdbc
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 22:45:05 2010 +0200
+
+    add a exit hook to kill xvfb when receive SIGTERM
+
+commit abf31faf9532e0019f3a3d7af138a63779edccd0
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 18:10:41 2010 +0200
+
+    change permissions of .gitignore
+
+commit 9a824209dcdb6640b658562abc48adb0ccfdd70b
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 17:52:25 2010 +0200
+
+    add a group to cmd_parse
+
+commit 58fe5fd2820df74a51651087386afade36d82f57
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 17:06:34 2010 +0200
+
+    add --xvfb option, add fork feature
+    
+    make logging to stdout disangageable
+
+commit 17c6f7b73dd7ac8e59824e2e69c34fcba487eb8f
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 01:50:12 2010 +0200
+
+    set new version string ;)
+
+commit df58b9d53d8c04230220708f83b0343163b38cf1
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 01:29:32 2010 +0200
+
+    fix start, stop in createRandomInt method
+
+commit ef74ef02650298d315cd280b33990fb6b1c6f71a
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 00:57:53 2010 +0200
+
+    add WatchedFileHandler for logging
+
+commit aa9acc9007d3dc3bd2daf01bbc2f48c3c1af953b
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 29 00:06:16 2010 +0200
+
+    add --watchdir option and code
+    
+    change behavior of createPathName method
+
+commit 597c48b6b9e9408dd23f2cfc3a876ae9c9063ccf
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 21 21:20:41 2010 +0200
+
+    add --thumbnail-only option and code
+
+commit a843f8972225be684a1f08df3cca50dae67d7a9c
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 21 05:14:16 2010 +0200
+
+    catch multiple exceptions in checkUrl
+
+commit 77a1cf34f5ad0ec9e2e56fe7920df5e142559640
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 21 04:45:18 2010 +0200
+
+    fixed typo in HttpUri class
+
+commit 86e08771d1077f9c64ff7df60b91240c1ef75b74
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 21 03:32:47 2010 +0200
+
+    update the http-proxy description
+
+commit 7865e80b189da8976e9198e0d98c1f8910f1c0e7
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 21 02:59:19 2010 +0200
+
+    switched to qt4 because of a working proxy implementation
+
+commit aef4523d00b54b82c91707fd36c5b8319deba248
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 8 19:05:12 2010 +0200
+
+    fixed gtk warning with cmdline_parse -h without X
+
+commit 684940222af73956884891b0a8fb066967b3114e
+Author: Robin Wittler <real@the-real.org>
+Date:   Tue Jun 8 16:18:55 2010 +0200
+
+    fixed coding param
+
+commit 90d0f70033cf6d954507a1c7727dea07dbdf9a74
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 22:19:23 2010 +0200
+
+    fixed coding string
+
+commit d556f47530b1836634e6cc0a60303a037ed6b480
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 18:24:33 2010 +0200
+
+    cmdtool.py: fixed --thumbnails bug
+
+commit c22a7eddbffcec8f2a2c7cd54e792b486b961d70
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 18:13:26 2010 +0200
+
+    README: add xvfb-run info
+
+commit a1d8429f0b5ad3441bd3edb24bf10a2adc90c3ca
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 18:09:00 2010 +0200
+
+    add thumbnail feature
+
+commit 5653c5663e3466011e2a0abf37238c5dfe8a6844
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 17:10:13 2010 +0200
+
+    site2image.py: removed unused robotparser import
+
+commit d088bfd0ada04a0ddfcb437714c9de1d18b76675
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 16:54:50 2010 +0200
+
+    add new proxy credentials format to readme
+
+commit c89c492259974f9e1fcaf8e972149a7cefa9c1bb
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon Jun 7 16:51:47 2010 +0200
+
+    nearly complete rewrite
+
+commit e2d585324b62488579ac20419758c8fb5be0ac47
+Author: Robin Wittler <real@the-real.org>
+Date:   Thu Jun 3 18:24:15 2010 +0200
+
+    add some fixes for logging
+
+commit 1b1af3f21c3c11c66aa459ed2daa2c71c86074bf
+Author: Robin Wittler <real@the-real.org>
+Date:   Thu Jun 3 01:50:08 2010 +0200
+
+    add logger functionality, create new loadFinished
+
+commit 44d73384673087fc3cc98ecfe4765b7e1e8627e3
+Author: Robin Wittler <real@the-real.org>
+Date:   Wed Jun 2 18:45:53 2010 +0200
+
+    add url to export filename
+
+commit 238f8748b15b9589ebefb4d0e26a05c1b0c8bf65
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 12:23:44 2010 +0200
+
+    fixed typo in description for honor robots cmd opt
+
+commit 46106ae199ba163becd1eba7ee5c57617d10db2e
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 12:06:10 2010 +0200
+
+    hey, lets raise the version number. ;)
+
+commit 64e78c291cbc230b42459dc7f2f3a95ad571b9db
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 11:35:18 2010 +0200
+
+    fixed deleted import bug
+
+commit 7a53b5903ec9ec8ef06af5310779342306881a4d
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 10:43:49 2010 +0200
+
+    add missing honor robots stuff in cmd usage
+
+commit 7832188e8ccc5e44a3f27e41d426ed21842c8894
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 10:42:00 2010 +0200
+
+    add cmd arg for honoring robots.txt
+
+commit e4974520d94493278a921a079ea59e5b31a80afa
+Author: Robin Wittler <real@the-real.org>
+Date:   Mon May 31 10:31:11 2010 +0200
+
+    add code to honor sites robots.txt
+
+commit ac3cf5c2368093260a2eaa2acd22c999ff155d31
+Author: Robin Wittler <real@the-real.org>
+Date:   Sun May 30 20:03:59 2010 +0200
+
+    add a README and removed unsed imports and attrs
+
+commit 1e0711fc1f3cc5a9781cdf3e55092c38c55d7b85
+Author: Robin Wittler <real@the-real.org>
+Date:   Sun May 30 19:10:10 2010 +0200
+
+    renaming browser.py to site2image.py
+
+commit 65ba9b9714aa00b5e8b0e83334f45e4d5bf46a9a
+Author: Robin Wittler <real@the-real.org>
+Date:   Sun May 30 18:59:41 2010 +0200
+
+    initial commit
