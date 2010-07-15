@@ -1,0 +1,10 @@
+site2image for Debian
+---------------------
+
+Be aware that some plugins (specially the flashplayer) can make problems with QtWebKit.
+It is equal if you use c++, perl, python or other qt4 bindings. libflashplayer make some glib calls
+and segfault then. Even if you say QtWebKit to "disable" plugins.
+
+So - i strongly advise you to not make use of libflashplayer.so
+
+ -- Robin Wittler <real@the-real.org>  Wed, 14 Jul 2010 16:09:50 +0200

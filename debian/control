@@ -1,0 +1,29 @@
+Source: site2image
+Section: python
+Priority: extra
+Maintainer: Robin Wittler <real@the-real.org>
+Build-Depends: debhelper (>= 7.0.50~)
+Build-Depends-Indep: python-support
+XS-Python-Version: all
+Standards-Version: 3.9.0
+Homepage: http://github.com/robin-wittler/site2image
+Vcs-Git: git://github.com/robin-wittler/site2image.git
+Vcs-Browser: http://github.com/robin-wittler/site2image/tree/master
+
+Package: site2image
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-websnapper
+Suggests: xvfb | xserver
+XB-Python-Version: ${python:Versions}
+Description: a QtWebKit based websnapper
+ site2image loads given urls and makes snapshots from
+ redered sites. It makes use of the websnapper package.
+
+
+Package: python-websnapper
+Architecture: all
+Depends: ${misc:Depends}, ${python:Depends}, python-qt4
+XB-Python-Version: ${python:Versions}
+Description: a QtWebkit based python package to snapshot websites
+ websnapper is a package that handle loading and snapshoting
+ websites. It is based on QtWebKit.
