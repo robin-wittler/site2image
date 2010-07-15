@@ -62,7 +62,6 @@ class SnapshotApp(object):
 
     def setUrls(self, *urls):
         for url in urls:
-            url = url.lower()
             if not (
                     url.startswith('http://') or
                     url.startswith('https://')
